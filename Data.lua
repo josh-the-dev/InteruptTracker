@@ -11,9 +11,9 @@ ns.INTERRUPT_SPELLS = {
     ["106839"] = { cd = 15, class = "DRUID" },          -- Skull Bash (Feral/Guardian/Resto)
     ["78675"]  = { cd = 60, class = "DRUID" },          -- Solar Beam (Balance)
     ["116705"] = { cd = 15, class = "MONK" },           -- Spear Hand Strike
-    ["147362"] = { cd = 24, class = "HUNTER" },         -- Counter Shot
-    ["183752"] = { cd = 15, class = "HUNTER" },         -- Disrupt (BM)
-    ["187707"] = { cd = 15, class = "DEMONHUNTER" },    -- Disrupt
+    ["147362"] = { cd = 24, class = "HUNTER" },         -- Counter Shot (Beast Mastery/Marksmanship)
+    ["187707"] = { cd = 15, class = "HUNTER" },         -- Muzzle (Survival)
+    ["183752"] = { cd = 15, class = "DEMONHUNTER" },    -- Disrupt
     ["351338"] = { cd = 20, class = "EVOKER" },         -- Quell
     ["1766"]   = { cd = 15, class = "ROGUE" },          -- Kick
     ["19647"]  = { cd = 24, class = "WARLOCK" },        -- Spell Lock (Felhunter - Affliction/Destruction)
@@ -25,7 +25,7 @@ ns.INTERRUPT_SPELLS = {
 ns.PRIMARY_INTERRUPT = {
     WARRIOR     = "6552",
     PALADIN     = "96231",
-    HUNTER      = "147362",
+    HUNTER      = function(specID) return specID == 255 and "187707" or "147362" end, -- Survival(255) = Muzzle, else Counter Shot
     ROGUE       = "1766",
     PRIEST      = "15487",
     DEATHKNIGHT = "47528",
@@ -34,7 +34,7 @@ ns.PRIMARY_INTERRUPT = {
     WARLOCK     = function(specID) return specID == 266 and "119914" or "19647" end, -- Demonology(266) = Axe Toss, else Spell Lock
     MONK        = "116705",
     DRUID       = function(specID) return specID == 102 and "78675" or "106839" end, -- Balance(102) = Solar Beam, else Skull Bash
-    DEMONHUNTER = "187707",
+    DEMONHUNTER = "183752",
     EVOKER      = "351338",
 }
 

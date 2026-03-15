@@ -39,8 +39,8 @@ Built specifically for **WoW Midnight (patch 12.0+)**. It does not use `COMBAT_L
 | Druid (Balance) | Solar Beam | 60s |
 | Druid (other) | Skull Bash | 15s |
 | Evoker | Quell | 20s |
-| Hunter (MM/SV) | Counter Shot | 24s |
-| Hunter (BM) | Disrupt | 15s |
+| Hunter (BM/MM) | Counter Shot | 24s |
+| Hunter (Survival) | Muzzle | 15s |
 | Mage | Counterspell | 24s |
 | Monk | Spear Hand Strike | 15s |
 | Paladin | Rebuke | 15s |
