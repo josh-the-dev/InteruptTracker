@@ -1,0 +1,11 @@
+## Interface: 120001
+## Title: InterruptTracker
+## Notes: Tracks interrupt cooldowns for Mythic+
+## Author:
+## Version: 1.0
+## SavedVariables: InterruptTrackerDB
+
+Core.lua
+Data.lua
+Display.lua
+Events.lua
