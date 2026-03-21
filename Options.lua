@@ -4,14 +4,33 @@ local addonName, ns = ...
 -- Defaults and saved variables
 ------------------------------------------------------------------------
 local DEFAULTS = {
-    maxRowsPerCol = 15,
-    scale         = 1.0,
-    locked        = false,
+    maxRowsPerCol  = 15,
+    scale          = 1.0,
+    locked         = false,
+    visibilityMode = "dungeon",  -- "dungeon" | "always"
 }
 
 local SCALE_STEPS = { 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.5, 1.75, 2.0 }
 
 local function DB() return InterruptTrackerDB end
+
+------------------------------------------------------------------------
+-- Visibility: show/hide tracker based on mode + current zone
+------------------------------------------------------------------------
+local function UpdateVisibility()
+    if DB().visibilityMode == "always" then
+        ns.trackerFrame:Show()
+    else
+        local inInstance = select(1, IsInInstance())
+        if inInstance then
+            ns.trackerFrame:Show()
+        else
+            ns.trackerFrame:Hide()
+        end
+    end
+end
+
+ns.UpdateVisibility = UpdateVisibility
 
 ------------------------------------------------------------------------
 -- Apply saved settings to the tracker frame
@@ -27,6 +46,7 @@ local function ApplySettings()
         ns.trackerFrame:RegisterForDrag("LeftButton")
     end
     ns.LayoutRows()
+    UpdateVisibility()
 end
 
 ------------------------------------------------------------------------
@@ -79,7 +99,7 @@ end
 -- Panel helpers
 ------------------------------------------------------------------------
 local panel = CreateFrame("Frame", "InterruptTrackerOptions", UIParent, "BackdropTemplate")
-panel:SetSize(254, 282)
+panel:SetSize(254, 342)
 panel:SetPoint("CENTER")
 panel:SetMovable(true)
 panel:EnableMouse(true)
@@ -205,10 +225,39 @@ end)
 lockBtn:SetPoint("TOPLEFT", panel, "TOPLEFT", 8, -132)
 
 ------------------------------------------------------------------------
--- Section: Test preview
+-- Section: Visibility mode
 ------------------------------------------------------------------------
 Divider(-164)
-SectionLabel("Test Preview", -172)
+SectionLabel("Show Tracker", -172)
+
+local visBtns = {}
+local VIS_OPTIONS = {
+    { key = "dungeon", label = "Dungeons Only" },
+    { key = "always",  label = "Always"        },
+}
+
+local function RefreshVisBtns()
+    for _, b in ipairs(visBtns) do
+        b:SetAlpha(b.visKey == DB().visibilityMode and 1.0 or 0.5)
+    end
+end
+
+for idx, opt in ipairs(VIS_OPTIONS) do
+    local b = MakeBtn(opt.label, 110, 22, function()
+        DB().visibilityMode = opt.key
+        UpdateVisibility()
+        RefreshVisBtns()
+    end)
+    b.visKey = opt.key
+    b:SetPoint("TOPLEFT", panel, "TOPLEFT", 8 + (idx - 1) * 118, -190)
+    visBtns[idx] = b
+end
+
+------------------------------------------------------------------------
+-- Section: Test preview
+------------------------------------------------------------------------
+Divider(-224)
+SectionLabel("Test Preview", -232)
 
 local TEST_GROUPS = {
     { "Solo",  1  }, { "Party", 5  }, { "10", 10 },
@@ -219,11 +268,11 @@ for i, info in ipairs(TEST_GROUPS) do
     local col = (i - 1) % 3
     local row = math.floor((i - 1) / 3)
     local b = MakeBtn(info[1], 58, 22, function() SimulateGroup(info[2]) end)
-    b:SetPoint("TOPLEFT", panel, "TOPLEFT", 8 + col * 62, -190 - row * 26)
+    b:SetPoint("TOPLEFT", panel, "TOPLEFT", 8 + col * 62, -250 - row * 26)
 end
 
 local clearBtn = MakeBtn("Clear Test Data", 160, 22, function() ClearTestData() end)
-clearBtn:SetPoint("TOPLEFT", panel, "TOPLEFT", 8, -246)
+clearBtn:SetPoint("TOPLEFT", panel, "TOPLEFT", 8, -306)
 
 ------------------------------------------------------------------------
 -- ADDON_LOADED: initialise DB, sync UI state, apply settings
@@ -241,9 +290,16 @@ initFrame:SetScript("OnEvent", function(self, event, name)
     RefreshRowBtns()
     RefreshScale()
     RefreshLockBtn()
+    RefreshVisBtns()
     ApplySettings()
     self:UnregisterAllEvents()
 end)
+
+-- Show/hide tracker whenever the player changes zones
+local zoneFrame = CreateFrame("Frame")
+zoneFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+zoneFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+zoneFrame:SetScript("OnEvent", function() UpdateVisibility() end)
 
 ------------------------------------------------------------------------
 -- Slash commands:  /inttracker  or  /itt
@@ -257,6 +313,7 @@ SlashCmdList["INTTRACKER"] = function()
         RefreshRowBtns()
         RefreshScale()
         RefreshLockBtn()
+        RefreshVisBtns()
         panel:Show()
     end
 end
