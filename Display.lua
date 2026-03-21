@@ -1,10 +1,16 @@
 local addonName, ns = ...
 
-local ROW_HEIGHT = 22
-local ROW_PAD    = 2
-local TOP_PAD    = 16
+local ROW_HEIGHT       = 22
+local ROW_PAD          = 2
+local TOP_PAD          = 16
+local MAX_ROWS_PER_COL = 15   -- mutable via ns.SetMaxRowsPerCol
+local SLOT_WIDTH       = 220  -- frame width consumed per column
 
 local rows = {}
+
+function ns.SetMaxRowsPerCol(n)
+    MAX_ROWS_PER_COL = n
+end
 
 ------------------------------------------------------------------------
 -- Main frame
@@ -25,6 +31,8 @@ frame:SetBackdrop({
 })
 frame:SetBackdropColor(0, 0, 0, 0.7)
 frame:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.8)
+
+ns.trackerFrame = frame
 
 local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 title:SetPoint("TOP", frame, "TOP", 0, -4)
@@ -73,12 +81,20 @@ end
 function ns.LayoutRows()
     local i = 0
     for guid in pairs(ns.trackedPlayers) do
-        local row = GetOrCreateRow(guid)
-        row:SetPoint("TOPLEFT", frame, "TOPLEFT", 5, -(TOP_PAD + i * (ROW_HEIGHT + ROW_PAD)))
+        local row      = GetOrCreateRow(guid)
+        local col      = math.floor(i / MAX_ROWS_PER_COL)
+        local rowInCol = i % MAX_ROWS_PER_COL
+        row:ClearAllPoints()
+        row:SetPoint("TOPLEFT", frame, "TOPLEFT",
+            col * SLOT_WIDTH + 5,
+            -(TOP_PAD + rowInCol * (ROW_HEIGHT + ROW_PAD)))
         row:Show()
         i = i + 1
     end
-    frame:SetHeight(TOP_PAD + i * (ROW_HEIGHT + ROW_PAD) + 4)
+    local numCols    = math.max(1, math.ceil(i / MAX_ROWS_PER_COL))
+    local tallRows   = math.min(i, MAX_ROWS_PER_COL)
+    frame:SetWidth(numCols * SLOT_WIDTH)
+    frame:SetHeight(TOP_PAD + tallRows * (ROW_HEIGHT + ROW_PAD) + 4)
 end
 
 ------------------------------------------------------------------------
