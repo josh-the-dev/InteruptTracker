@@ -117,8 +117,6 @@ panel:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
 panel:SetFrameStrata("DIALOG")
 panel:Hide()
 
--- Close on Escape
-table.insert(UISpecialFrames, "InterruptTrackerOptions")
 
 local titleText = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 titleText:SetPoint("TOP", panel, "TOP", 0, -10)
