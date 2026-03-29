@@ -155,26 +155,87 @@ end)
 
 
 ------------------------------------------------------------------------
--- Party watcher frames — pre-created at load time (not during combat)
+-- Correlation-based party interrupt detection (no CLEU, no tainted spellID)
+--
+-- UNIT_SPELLCAST_SUCCEEDED fires for party members but spellID is tainted.
+-- UNIT_SPELLCAST_INTERRUPTED fires on the nameplate when a mob's cast
+-- is interrupted. We match the two by timestamp within a 50ms window
+-- to determine who interrupted without ever touching the spellID.
 ------------------------------------------------------------------------
-local partyFrames = {}
-for i = 1, 4 do
-    partyFrames[i] = CreateFrame("Frame")
-end
+local pendingCasts      = {}  -- [unit] = timestamp
+local pendingInterrupts = {}  -- [nameplateUnit] = timestamp
+local correlPending     = false
+local TIME_WINDOW       = 0.050
 
-local function RegisterPartyWatchers()
-    for i = 1, 4 do
-        local unit = "party" .. i
-        partyFrames[i]:UnregisterAllEvents()
-        if UnitExists(unit) then
-            partyFrames[i]:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", unit)
-            local u = unit
-            partyFrames[i]:SetScript("OnEvent", function(_, _, _, _, spellID)
-                HandleCast(u, spellID)
-            end)
+local function ProcessCorrelation()
+    correlPending = false
+
+    local interruptCount, targetUnit = 0, nil
+    for unit in pairs(pendingInterrupts) do
+        interruptCount = interruptCount + 1
+        targetUnit = unit
+    end
+
+    if interruptCount == 0 then
+        wipe(pendingCasts)
+        return
+    end
+
+    -- Multiple simultaneous interrupts = AOE CC, not a kick
+    if interruptCount > 1 then
+        wipe(pendingInterrupts)
+        wipe(pendingCasts)
+        return
+    end
+
+    local interruptTime = pendingInterrupts[targetUnit]
+
+    -- Find the party member whose cast timestamp is closest
+    local bestUnit, bestDiff = nil, math.huge
+    for unit, castTime in pairs(pendingCasts) do
+        local diff = math.abs(interruptTime - castTime)
+        if diff <= TIME_WINDOW and diff < bestDiff then
+            bestUnit, bestDiff = unit, diff
         end
     end
+
+    if bestUnit then
+        local guid = UnitGUID(bestUnit)
+        if guid and ns.trackedPlayers[guid] then
+            local data   = ns.trackedPlayers[guid]
+            local cdInfo = data.spellID and ns.INTERRUPT_SPELLS[data.spellID]
+            data.cdEnd   = GetTime() + (cdInfo and cdInfo.cd or 15)
+        end
+    end
+
+    wipe(pendingInterrupts)
+    wipe(pendingCasts)
 end
+
+local correlFrame = CreateFrame("Frame")
+correlFrame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+correlFrame:RegisterEvent("UNIT_SPELLCAST_INTERRUPTED")
+correlFrame:SetScript("OnEvent", function(_, event, unit)
+    if event == "UNIT_SPELLCAST_SUCCEEDED" then
+        if unit == "player" or unit == "pet" then return end  -- handled by playerCastFrame
+        if not unit:find("^party") then return end
+        pendingCasts[unit] = GetTime()
+        if not correlPending then
+            correlPending = true
+            C_Timer.After(0.03, ProcessCorrelation)
+        end
+
+    elseif event == "UNIT_SPELLCAST_INTERRUPTED" then
+        if not unit:find("^nameplate") then return end
+        pendingInterrupts[unit] = GetTime()
+        if not correlPending then
+            correlPending = true
+            C_Timer.After(0.03, ProcessCorrelation)
+        end
+    end
+end)
+
+local function RegisterPartyWatchers() end  -- no longer needed, kept for call-site compat
 
 ------------------------------------------------------------------------
 -- Main event frame
